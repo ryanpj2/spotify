@@ -26,95 +26,62 @@ json_list = lapply(file_names, fromJSON)
 combined_data = bind_rows(json_list)
 
 save(combined_data, file = "streaming_history_2020-2024.Rdata")
-
-# spotify_2024_raw = fromJSON("Spotify Extended Streaming History/Streaming_History_Audio_2024_5.json")
-# spotify_2024 = spotify_2024_raw %>% 
-#   rename(track = master_metadata_track_name, artist = master_metadata_album_artist_name,
-#          album = master_metadata_album_album_name)
-# 
-# spotify_2023_raw = fromJSON("Spotify Extended Streaming History/Streaming_History_Audio_2023-2024_4.json")
-# spotify_2023 = spotify_2023_raw %>% 
-#   rename(track = master_metadata_track_name, artist = master_metadata_album_artist_name,
-#          album = master_metadata_album_album_name)
-# 
-# spotify_2022_2023_raw = fromJSON("Spotify Extended Streaming History/Streaming_History_Audio_2022-2023_3.json")
 ```
 
 
 ```{r}
 load("streaming_history_2020-2024.Rdata")
-combined_data %>% 
+spotify = combined_data %>% 
   rename(track = master_metadata_track_name, artist = master_metadata_album_artist_name, 
-         album = master_metadata_album_album_name) %>% 
-  mutate(year = year(ts)) %>% 
-  select(ts, year, username:incognito_mode)
+         album = master_metadata_album_album_name)
+spotify$skipped = ifelse(spotify$ms_played/1000 < 30, TRUE, FALSE)
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ```{r}
-# top_artists_2024 = spotify_2024 %>% 
-#   filter(skipped != TRUE) %>% 
-#   group_by(artist) %>% 
-#   summarise(total_time_played = sum(ms_played)) %>%
-#   mutate(total_time_played = total_time_played/60000) %>% 
-#   arrange(desc(total_time_played))
-# 
-# top_10_artists_2024 = top_artists_2024 %>% 
-#   head(10)
-# 
-# ggplot(top_10_artists_2024, aes(x = reorder(artist, total_time_played), y = total_time_played)) +
-#   geom_bar(stat = "identity") +
-#   scale_y_continuous(expand = c(0,0)) +
-#   scale_x_discrete(expand = c(0,0)) +
-#   geom_text(aes(label = paste0(floor(total_time_played), " mins.")), 
-#             color = "white", hjust = 1.1, vjust = 0.4, size = 2.5) +
-#   labs(title = "My Top 10 Artists Played in 2024",
-#        x = "Artist",
-#        y = "Minutes Played") +
-#   coord_flip() +
-#   theme_fivethirtyeight() +
-#   theme(axis.title.x = element_text(size = 10, vjust = -1),
-#         panel.grid.major.y = element_blank())
+artist_minutes_2024 = spotify %>% 
+  filter(skipped != TRUE, year(ts) == 2024, artist != "NA") %>% 
+  group_by(artist) %>% 
+  summarise(minutes_played = floor(sum(ms_played)/60000)) %>% 
+  arrange(desc(minutes_played))
+
+ggplot(head(artist_minutes_2024, 10), aes(x = reorder(artist, minutes_played), y = minutes_played)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  geom_text(aes(label = paste0(floor(minutes_played), " mins.")), hjust = 1.1, vjust = 0.4, size = 2.5) +
+  labs(title = "My Top 10 Artists Played in 2024",
+       x = "Artist",
+       y = "Minutes Played") +
+  coord_flip() +
+  theme_fivethirtyeight() +
+  theme(axis.title.x = element_text(size = 10, vjust = -1),
+        panel.grid.major.y = element_blank(),
+        axis.title.y = element_blank())
+
 ```
-
 ```{r}
-# spotify_2024 %>% 
-#   filter(skipped != TRUE) %>% 
-#   group_by(track) %>% 
-#   summarise(total_time_played = sum(ms_played)) %>%
-#   mutate(total_time_played = floor(total_time_played/60000)) %>% 
-#   arrange(desc(total_time_played))
-```
+track_minutes_2024 = spotify %>% 
+  filter(skipped != TRUE, year(ts) == 2024, artist != "NA") %>% 
+  group_by(track, artist) %>% 
+  summarise(minutes_played = floor(sum(ms_played)/60000)) %>% 
+  arrange(desc(minutes_played))
 
-```{r}
-# spotify_2023 %>% 
-#   filter(skipped != TRUE) %>% 
-#   group_by(track) %>% 
-#   summarise(total_time_played = sum(ms_played)) %>%
-#   mutate(total_time_played = floor(total_time_played/60000)) %>% 
-#   arrange(desc(total_time_played))
+ggplot(head(track_minutes_2024, 10), aes(x = reorder(track, minutes_played), y = minutes_played, fill = artist)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(expand = c(0,0), limits = c(0,185)) +
+  scale_x_discrete(expand = c(0,0), guide = "none") +
+  geom_text(aes(y = 1, label = paste0(track, sep = " - ", artist)), hjust = 0, size = 3) +
+  geom_text(aes(label = paste0(floor(minutes_played), " mins.")), hjust = -0.1, vjust = 0.4, size = 2.5) +
+  labs(title = "My Top 10 Tracks Played in 2024") +
+  coord_flip() +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = "none")
+
 ```
 
 
